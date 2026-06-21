@@ -1,0 +1,53 @@
+Taarav-Assessment-System
+│
+├── index.html
+├── style.css
+├── script.js
+├── class8.js
+├── class9.js
+├── class10.js
+├── report.js
+├── chart.js
+├── timer.js
+├── analytics.js
+├── pdf.js
+├── admin.js
+├── assets/
+│     ├── taarav-logo.png
+│     ├── bg.jpg
+│     └── icon.png
+└── reports/
+
+Page 1
+
+Registration Form
+
+↓
+
+Page 2
+
+Instructions + Consent Declaration
+
+↓
+
+Page 3
+
+Assessment Page
+
+↓
+
+Page 4
+
+Result & Radar Chart
+
+↓
+
+Page 5
+
+PDF Report
+
+↓
+
+Page 6
+
+Admin Dashboard
