@@ -75,8 +75,11 @@ header::before{
 }
 
 .logo{
-    height:85px;
-    max-width:100%;
+    display:block;
+    width:100%;
+    max-width:420px;
+    height:auto;
+    margin:0 auto 10px auto;
     object-fit:contain;
 }
 
@@ -1303,5 +1306,18 @@ header h2{
         display:block !important;
         overflow-x:auto !important;
         white-space:nowrap !important;
+    }
+}
+@media(max-width:900px){
+    .logo{
+        width:85% !important;
+        max-width:300px !important;
+        height:auto !important;
+    }
+
+    header{
+        padding-left:15px !important;
+        padding-right:15px !important;
+        overflow:hidden !important;
     }
 }
