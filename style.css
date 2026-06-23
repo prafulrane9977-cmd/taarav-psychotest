@@ -1311,7 +1311,7 @@ header h2{
 @media(max-width:900px){
     .logo{
         width:85% !important;
-        max-width:300px !important;
+        max-width:250px !important;
         height:auto !important;
     }
 
