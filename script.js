@@ -1344,6 +1344,7 @@ let categoryScore = {};
 
 function startAssessment()
 {
+	openFullScreen();
 	let selectedClass =
 document.getElementById("studentClass").value;
 
@@ -1792,6 +1793,7 @@ function submitTest()
     if(answer)
     {
         clearInterval(timerInterval);
+		 exitFullScreen();
 
         generateBasicResult();
 
@@ -2181,3 +2183,50 @@ function deleteStudent(index)
         showAdminDashboard();
     }
 }
+let warningCount = 0;
+let maxWarnings = 3;
+
+function openFullScreen()
+{
+    let elem = document.documentElement;
+
+    if(elem.requestFullscreen)
+    {
+        elem.requestFullscreen();
+    }
+    else if(elem.webkitRequestFullscreen)
+    {
+        elem.webkitRequestFullscreen();
+    }
+    else if(elem.msRequestFullscreen)
+    {
+        elem.msRequestFullscreen();
+    }
+}
+
+function exitFullScreen()
+{
+    if(document.exitFullscreen)
+    {
+        document.exitFullscreen();
+    }
+}
+
+document.addEventListener("visibilitychange", function()
+{
+    if(document.hidden)
+    {
+        warningCount++;
+
+        alert(
+            "Warning " + warningCount + "/" + maxWarnings +
+            ": Please do not minimize or switch tabs during the test."
+        );
+
+        if(warningCount >= maxWarnings)
+        {
+            alert("Maximum warnings reached. Test will be submitted automatically.");
+            submitTest();
+        }
+    }
+});
