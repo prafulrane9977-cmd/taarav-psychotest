@@ -1597,8 +1597,8 @@ function startTimer()
 {
     clearInterval(timerInterval);
 
-    timerInterval = setInterval(function(){
-
+    timerInterval = setInterval(function()
+    {
         let minutes = Math.floor(totalTime / 60);
 
         let seconds = totalTime % 60;
@@ -1619,12 +1619,18 @@ function startTimer()
 
             alert("Time is over. Test submitted automatically.");
 
-            showPage("resultPage");
+            // Last question answer save
+            saveCurrentAnswer();
+
+            // Last question timing save
+            saveQuestionTime();
+
+            // Direct submit without confirmation
+            forceSubmitTest();
         }
 
     },1000);
 }
-
 function calculateCategoryScore()
 {
     for(let i=0;i<50;i++)
@@ -1745,40 +1751,62 @@ function saveStudentData()
 }
 function saveToGoogleSheet()
 {
-    let attemptedValue =
-    studentAnswers.filter(x => x !== undefined).length;
-
-    let correctValue = 0;
-
-    for(let i=0;i<questions.length;i++)
+    try
     {
-        if(studentAnswers[i] == questions[i].answer)
+        let attemptedValue =
+        studentAnswers.filter(x => x !== undefined).length;
+
+        let correctValue = 0;
+
+        for(let i=0;i<questions.length;i++)
         {
-            correctValue++;
+            if(studentAnswers[i] == questions[i].answer)
+            {
+                correctValue++;
+            }
         }
+
+        let percentageValue =
+        ((correctValue / questions.length) * 100).toFixed(2);
+
+        let url =
+        GOOGLE_SHEET_URL +
+        "?name=" + encodeURIComponent(document.getElementById("studentName").value) +
+        "&class=" + encodeURIComponent(document.getElementById("studentClass").value) +
+        "&mobile=" + encodeURIComponent(document.getElementById("mobileNumber").value) +
+        "&school=" + encodeURIComponent(document.getElementById("schoolName").value) +
+        "&attempted=" + encodeURIComponent(attemptedValue) +
+        "&correct=" + encodeURIComponent(correctValue) +
+        "&percentage=" + encodeURIComponent(percentageValue + "%");
+
+        fetch(url)
+        .then(function(response){
+            return response.text();
+        })
+        .then(function(data){
+            console.log("Google Sheet Saved:", data);
+        })
+        .catch(function(error){
+            console.log("Network failed. Saved pending result.");
+
+            let pendingResults =
+            JSON.parse(localStorage.getItem("pendingResults")) || [];
+
+            pendingResults.push({
+                url:url,
+                date:new Date().toLocaleString()
+            });
+
+            localStorage.setItem(
+                "pendingResults",
+                JSON.stringify(pendingResults)
+            );
+        });
     }
-
-    let percentageValue =
-    ((correctValue / questions.length) * 100).toFixed(2);
-
-    let url =
-    GOOGLE_SHEET_URL +
-    "?name=" + encodeURIComponent(document.getElementById("studentName").value) +
-    "&class=" + encodeURIComponent(document.getElementById("studentClass").value) +
-    "&mobile=" + encodeURIComponent(document.getElementById("mobileNumber").value) +
-    "&school=" + encodeURIComponent(document.getElementById("schoolName").value) +
-    "&attempted=" + encodeURIComponent(attemptedValue) +
-    "&correct=" + encodeURIComponent(correctValue) +
-    "&percentage=" + encodeURIComponent(percentageValue + "%");
-
-    fetch(url)
-    .then(response => response.text())
-    .then(data => {
-        console.log("Google Sheet Response:", data);
-    })
-    .catch(error => {
-        console.log("Google Sheet Error:", error);
-    });
+    catch(error)
+    {
+        console.log("Save function error ignored:", error);
+    }
 }
 // =====================================
 // SUBMIT TEST
@@ -2183,8 +2211,6 @@ function deleteStudent(index)
         showAdminDashboard();
     }
 }
-let warningCount = 0;
-let maxWarnings = 3;
 
 function openFullScreen()
 {
@@ -2212,21 +2238,143 @@ function exitFullScreen()
     }
 }
 
-document.addEventListener("visibilitychange", function()
-{
-    if(document.hidden)
-    {
-        warningCount++;
+let warningCount = 0;
+let maxWarnings = 3;
+let testSubmitted = false;
+let warningLocked = false;
 
+function giveTabWarning()
+{
+    if(testSubmitted || warningLocked)
+    {
+        return;
+    }
+
+    warningLocked = true;
+    warningCount++;
+
+    if(warningCount >= maxWarnings)
+    {
+        alert("Warning 3/3: Maximum warning reached. Test submitted automatically.");
+
+        testSubmitted = true;
+
+        forceSubmitTest();
+    }
+    else
+    {
         alert(
             "Warning " + warningCount + "/" + maxWarnings +
-            ": Please do not minimize or switch tabs during the test."
+            ": Please do not minimize, switch tabs, or exit fullscreen during the test."
         );
+    }
 
-        if(warningCount >= maxWarnings)
-        {
-            alert("Maximum warnings reached. Test will be submitted automatically.");
-            submitTest();
-        }
+    setTimeout(function(){
+        warningLocked = false;
+    },1000);
+}
+
+document.addEventListener("visibilitychange", function()
+{
+    if(document.hidden && !testSubmitted)
+    {
+        giveTabWarning();
     }
 });
+
+document.addEventListener("fullscreenchange", function()
+{
+    if(!document.fullscreenElement && !testSubmitted)
+    {
+        giveTabWarning();
+    }
+});
+function forceSubmitTest()
+{
+	testSubmitted = true;
+	console.log("Force Submit Started");
+    console.log(studentAnswers);
+    console.log(questions.length);
+    saveQuestionTime();
+
+    clearInterval(timerInterval);
+
+    exitFullScreen();
+
+    generateBasicResult();
+
+    generateCategoryResult();
+
+    showPage("resultPage");
+
+    let attemptedCardValue =
+    studentAnswers.filter(x => x !== undefined).length;
+
+    let correctCardValue = 0;
+
+    for(let i=0;i<questions.length;i++)
+    {
+        if(studentAnswers[i] == questions[i].answer)
+        {
+            correctCardValue++;
+        }
+    }
+
+    let percentageCardValue =
+    ((correctCardValue / questions.length) * 100).toFixed(2);
+
+    document.getElementById("attemptedCard").innerHTML = attemptedCardValue;
+
+    document.getElementById("correctCard").innerHTML = correctCardValue;
+
+    document.getElementById("percentageCard").innerHTML =
+    percentageCardValue + "%";
+
+    generateRadarChart();
+
+    generateStudentReportCard();
+
+    generateLearningBadge();
+
+    saveStudentData();
+
+    saveToGoogleSheet();
+}
+function syncPendingResults()
+{
+    let pendingResults =
+    JSON.parse(localStorage.getItem("pendingResults")) || [];
+
+    if(pendingResults.length === 0)
+    {
+        return;
+    }
+
+    let remainingResults = [];
+
+    pendingResults.forEach(function(item){
+
+        fetch(item.url)
+        .then(function(response){
+            return response.text();
+        })
+        .then(function(data){
+            console.log("Pending result synced:", data);
+        })
+        .catch(function(error){
+            remainingResults.push(item);
+
+            localStorage.setItem(
+                "pendingResults",
+                JSON.stringify(remainingResults)
+            );
+        });
+
+    });
+}
+
+window.addEventListener("online", function(){
+    syncPendingResults();
+});
+
+syncPendingResults();
