@@ -1344,6 +1344,9 @@ let categoryScore = {};
 
 function startAssessment()
 {
+	testStarted = true;
+warningCount = 0;
+testSubmitted = false;
 	openFullScreen();
 	let selectedClass =
 document.getElementById("studentClass").value;
@@ -1611,26 +1614,23 @@ function startTimer()
         document.getElementById("timer").innerHTML =
         minutes + ":" + seconds;
 
-        totalTime--;
-
-        if(totalTime < 0)
+        // Time Over
+        if(totalTime <= 0)
         {
             clearInterval(timerInterval);
 
-            alert("Time is over. Test submitted automatically.");
+            console.log("Timer Finished - Auto Submit");
 
-            // Last question answer save
-            saveCurrentAnswer();
-
-            // Last question timing save
-            saveQuestionTime();
-
-            // Direct submit without confirmation
             forceSubmitTest();
+
+            return;
         }
+
+        totalTime--;
 
     },1000);
 }
+
 function calculateCategoryScore()
 {
     for(let i=0;i<50;i++)
@@ -1820,8 +1820,12 @@ function submitTest()
 
     if(answer)
     {
+        testSubmitted = true;
+        testStarted = false;
+
         clearInterval(timerInterval);
-		 exitFullScreen();
+
+        exitFullScreen();
 
         generateBasicResult();
 
@@ -2116,7 +2120,18 @@ function showAdminDashboard()
     let url = GOOGLE_SHEET_URL + "?action=read";
 
     fetch(url)
-    .then(response => response.json())
+    .then(response => response.text())
+.then(text => {
+    console.log("Admin raw response:", text);
+
+    if(text.trim().startsWith("<"))
+    {
+        alert("Google Script URL/Deployment issue. Apps Script JSON nahi bhej raha.");
+        return [];
+    }
+
+    return JSON.parse(text);
+})
     .then(students => {
 
         let html = `
@@ -2242,10 +2257,10 @@ let warningCount = 0;
 let maxWarnings = 3;
 let testSubmitted = false;
 let warningLocked = false;
-
+let testStarted = false;
 function giveTabWarning()
 {
-    if(testSubmitted || warningLocked)
+    if(!testStarted || testSubmitted || warningLocked)
     {
         return;
     }
@@ -2258,6 +2273,7 @@ function giveTabWarning()
         alert("Warning 3/3: Maximum warning reached. Test submitted automatically.");
 
         testSubmitted = true;
+        testStarted = false;
 
         forceSubmitTest();
     }
@@ -2276,7 +2292,7 @@ function giveTabWarning()
 
 document.addEventListener("visibilitychange", function()
 {
-    if(document.hidden && !testSubmitted)
+    if(document.hidden && testStarted && !testSubmitted)
     {
         giveTabWarning();
     }
@@ -2284,17 +2300,30 @@ document.addEventListener("visibilitychange", function()
 
 document.addEventListener("fullscreenchange", function()
 {
-    if(!document.fullscreenElement && !testSubmitted)
+    if(testStarted && !document.fullscreenElement && !testSubmitted)
     {
         giveTabWarning();
     }
 });
 function forceSubmitTest()
 {
-	testSubmitted = true;
-	console.log("Force Submit Started");
+    testSubmitted = true;
+    testStarted = false;
+
+    console.log("Force Submit Started");
     console.log(studentAnswers);
     console.log(questions.length);
+
+    // Last selected answer save
+    let selectedOption =
+    document.querySelector('input[name="option"]:checked');
+
+    if(selectedOption)
+    {
+        studentAnswers[currentQuestionIndex] =
+        parseInt(selectedOption.value);
+    }
+
     saveQuestionTime();
 
     clearInterval(timerInterval);
@@ -2323,9 +2352,11 @@ function forceSubmitTest()
     let percentageCardValue =
     ((correctCardValue / questions.length) * 100).toFixed(2);
 
-    document.getElementById("attemptedCard").innerHTML = attemptedCardValue;
+    document.getElementById("attemptedCard").innerHTML =
+    attemptedCardValue;
 
-    document.getElementById("correctCard").innerHTML = correctCardValue;
+    document.getElementById("correctCard").innerHTML =
+    correctCardValue;
 
     document.getElementById("percentageCard").innerHTML =
     percentageCardValue + "%";
